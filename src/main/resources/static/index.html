@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farm Direct - Fresh from Farmers</title>
+    <link rel="stylesheet" href="css/style.css?v=7">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/brand.png?v=5">
+</head>
+
+<body>
+    <div id="navbar-container"></div>
+
+    <div class="container">
+        <div style="margin-bottom: 2rem; display: flex; gap: 1rem;">
+            <input type="text" id="searchInput" placeholder="Search products..."
+                style="flex: 1; width: auto; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px;">
+            <select id="categoryFilter"
+                style="width: auto; min-width: 180px; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px;">
+                <option value="">All Categories</option>
+                <option disabled>Loading...</option>
+            </select>
+            <button onclick="searchProducts()" class="btn-primary"
+                style="width: auto; padding: 0 1.5rem;">Search</button>
+        </div>
+
+        <div id="product-list" class="product-grid">
+            <!-- Products will be loaded here -->
+            <p>Loading products...</p>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/nav.js"></script>
+    <script>
+        let cartItems = {}; // Map: productId -> cartItem
+        let currentUser = null;
+        let categoryMap = {}; // name -> unit
+
+        async function loadCategories() {
+            try {
+                const res = await fetch('/api/categories');
+                const categories = await res.json();
+                const select = document.getElementById('categoryFilter');
+
+                // Store units in map
+                categories.forEach(c => categoryMap[c.name] = c.unit);
+
+                // Keep 'All Categories' option
+                select.innerHTML = '<option value="">All Categories</option>' + categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function init() {
+            const userJson = localStorage.getItem('user');
+            if (userJson) {
+                currentUser = JSON.parse(userJson);
+                await fetchCart();
+            }
+            await loadCategories(); // Await categories loading
+            loadProducts();
+        }
+
+        async function fetchCart() {
+            if (!currentUser || currentUser.role === 'FARMER') return;
+            try {
+                const res = await fetch(`/api/cart/${currentUser.id}`);
+                const data = await res.json(); // returns List<CartItem>
+                cartItems = {};
+                data.forEach(item => {
+                    cartItems[item.product.id] = item;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadProducts(query = '', category = '') {
+            let url = '/api/products';
+            if (query) url = `/api/products/search?query=${query}`;
+            else if (category) url = `/api/products/category/${category}`;
+
+            try {
+                const response = await fetch(url);
+                const products = await response.json();
+                const container = document.getElementById('product-list');
+
+                if (products.length === 0) {
+                    container.innerHTML = '<p>No products found.</p>';
+                    return;
+                }
+
+                container.innerHTML = products.map(p => {
+                    const inCart = cartItems[p.id];
+                    const unit = categoryMap[p.category] || '';
+                    return `
+                    <div class="product-card">
+                        <a href="product-details.html?id=${p.id}" style="text-decoration: none; color: inherit;">
+                            <img src="${p.imageUrl || 'https://placehold.co/400x300?text=Product'}" class="product-img" alt="${p.name}">
+                        </a>
+                        <div class="product-info">
+                            <a href="product-details.html?id=${p.id}" style="text-decoration: none; color: inherit;">
+                                <div class="product-title">${p.name}</div>
+                            </a>
+							<div style="font-size: 0.85rem; color: #555; margin: 0.25rem 0 0.5rem 0;">
+							        ${p.description ? p.description : 'No description provided'}
+							    </div>
+                            <div class="product-price">₹${p.price} / ${unit}</div>
+                            <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.5rem;">
+                                Qty: ${p.quantity} ${unit}
+                            </div>
+                            <div class="farmer-info" style="display: flex; flex-direction: column; align-items: start; gap: 0.25rem;">
+                                <div>
+                                    <span>Sold by: ${p.farmer ? p.farmer.name : 'Unknown'}</span>
+                                    ${p.farmer ? renderBadge(p.farmer) : ''}
+                                </div>
+                                ${p.farmer ? renderStars(p.farmer) : ''}
+                            </div>
+                            
+                            <div id="action-${p.id}" style="margin-top: 1rem;">
+                                ${renderActionButtons(p)}
+                            </div>
+                        </div>
+                    </div>
+                `}).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        function renderActionButtons(product) {
+            if (!currentUser) {
+                return `<button onclick="window.location.href='login.html'" class="btn-primary">Login to Buy</button>`;
+            }
+            if (currentUser.role === 'FARMER') {
+                return `<button disabled class="btn-primary" style="background:#ccc; cursor:not-allowed;">Farmers cannot buy</button>`;
+            }
+
+            const item = cartItems[product.id];
+
+            if (product.status === 'PAUSED') {
+                return `<button disabled class="btn-primary" style="background:#ccc; cursor:not-allowed;">Temporarily Unavailable</button>`;
+            }
+
+            if (product.quantity <= 0) {
+                return `<button disabled class="btn-primary" style="background:#ccc; cursor:not-allowed;">Out of Stock</button>`;
+            }
+
+            if (item) {
+                return `
+                    <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: center;">
+                        <button onclick="updateQty(${item.id}, ${product.id}, ${item.quantity - 1})" 
+                            style="background: #e9ecef; border: none; width: 32px; height: 32px; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
+                        <span style="font-weight: 600; min-width: 20px; text-align: center;">${item.quantity}</span>
+                        <button onclick="updateQty(${item.id}, ${product.id}, ${item.quantity + 1})" 
+                            style="background: #e9ecef; border: none; width: 32px; height: 32px; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
+                    </div>
+                `;
+            } else {
+                return `<button onclick="addToCart(${product.id})" class="btn-primary">Add to Cart</button>`;
+            }
+        }
+
+        async function addToCart(productId) {
+            try {
+                const res = await fetch('/api/cart/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ customerId: currentUser.id, productId: productId, quantity: 1 })
+                });
+                if (res.ok) {
+                    await fetchCart(); // Refresh cart state
+                    loadProducts(); // Re-render to show controls
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function updateQty(cartItemId, productId, newQty) {
+            if (newQty <= 0) {
+                // Delete
+                try {
+                    const res = await fetch(`/api/cart/remove/${cartItemId}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        delete cartItems[productId];
+                        loadProducts(); // Re-render
+                    }
+                } catch (e) { console.error(e); }
+            } else {
+                // Update
+                try {
+                    const res = await fetch('/api/cart/update', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cartItemId: cartItemId, quantity: newQty })
+                    });
+                    if (res.ok) {
+                        await fetchCart();
+                        loadProducts();
+                    }
+                } catch (e) { console.error(e); }
+            }
+        }
+
+        function searchProducts() {
+            const query = document.getElementById('searchInput').value;
+            const category = document.getElementById('categoryFilter').value;
+            loadProducts(query, category);
+        }
+
+        function renderBadge(farmer) {
+            const badge = farmer.badge; // Accessed via getBadge() transient field
+            if (!badge) return '';
+
+            let badgeClass = 'badge-new';
+            let badgeText = 'New Farmer';
+
+            if (badge === 'TRUSTED') { badgeClass = 'badge-trusted'; badgeText = 'Trusted'; }
+            else if (badge === 'GROWING') { badgeClass = 'badge-growing'; badgeText = 'Growing'; }
+            else if (badge === 'LOW_RATED') { badgeClass = 'badge-low'; badgeText = 'Low Rated'; }
+
+            return `<span class="badge ${badgeClass}">${badgeText}</span>`;
+        }
+
+        function renderStars(farmer) {
+            if (farmer.ratingCount === 0) return `<div style="font-size: 0.8rem; color: #888;">No reviews yet</div>`;
+            return `
+                <div style="font-size: 0.85rem; display: flex; align-items: center;">
+                    <span class="rating-stars">★</span> 
+                    <span style="font-weight: 600; margin-left: 4px;">${farmer.averageRating}</span>
+                    <span style="color: #666; margin-left: 4px;">(${farmer.ratingCount})</span>
+                </div>
+            `;
+        }
+
+        init();
+        // loadProducts called inside init
+
+
+    </script> <!-- Community Preview -->
+    <div class="container" style="margin-top:4rem;">
+        <h3 style="color:#2e7d32;">🌾 Farmer Community</h3>
+        <p style="color:#666;">Latest stories from farmers</p>
+
+        <div id="community-preview">
+            <p>Loading community stories...</p>
+        </div>
+
+        <div style="text-align:center; margin-top:1rem;">
+            <button onclick="window.location.href='community.html'" style="
+		                background:#2e7d32;
+		                color:white;
+		                border:none;
+		                padding:10px 24px;
+		                border-radius:24px;
+		                font-weight:600;
+		                cursor:pointer;
+		            ">
+                View All Stories →
+            </button>
+        </div>
+    </div>
+    <script>
+        async function loadCommunityPreview() {
+            try {
+                const res = await fetch('/api/community');
+                const posts = await res.json();
+
+                const container = document.getElementById('community-preview');
+                if (!container) return;
+
+                if (posts.length === 0) {
+                    container.innerHTML = '<p>No community stories yet.</p>';
+                    return;
+                }
+
+                // Show only latest 3 stories
+                const latest = posts.slice(0, 3);
+
+                container.innerHTML = latest.map(p => `
+		            <div style="
+		                background:#f6fff1;
+		                border-radius:12px;
+		                padding:1rem;
+		                margin-bottom:1rem;
+		                box-shadow:0 2px 6px rgba(0,0,0,0.05);
+		            ">
+		                <div style="font-weight:600;">${p.title}</div>
+
+		                <div style="font-size:0.85rem; color:#555; margin:0.25rem 0;">
+		                    ${p.description ? p.description.substring(0, 80) + '...' : ''}
+		                </div>
+
+		                <div style="font-size:0.8rem; color:#2e7d32;">
+		                    👨‍🌾 ${p.farmer ? p.farmer.name : 'Farmer'}
+		                </div>
+		            </div>
+		        `).join('');
+
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        loadCommunityPreview();
+    </script>
+
+</body>
+
+</html>

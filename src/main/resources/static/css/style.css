@@ -1,0 +1,530 @@
+:root {
+    /* Fresh Farming Palette */
+    --primary: #4CAF50;
+    --primary-dark: #388E3C;
+    --secondary: #8D6E63;
+    --accent-red: #F44336;
+    --accent-yellow: #FFC107;
+    --accent-blue: #2196F3;
+    --accent-orange: #FF9800;
+    --dark: #2E2E2E;
+    --light: #F1F8E9;
+    --white: #ffffff;
+    --gray: #757575;
+    --border: #e0e0e0;
+
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    --shadow-hover: 0 10px 15px rgba(0, 0, 0, 0.1);
+    --radius: 8px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Lexend', sans-serif;
+    background-color: var(--light);
+    color: var(--dark);
+    margin: 0;
+    padding-bottom: 60px;
+    line-height: 1.6;
+}
+
+/* --- Layout & Typography --- */
+h1,
+h2,
+h3,
+h4 {
+    margin-top: 0;
+    color: var(--primary-dark);
+}
+
+a {
+    color: var(--primary);
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+a:hover {
+    color: var(--primary-dark);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+}
+
+/* --- Navbar --- */
+.navbar {
+    background: var(--white);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.brand {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem;
+    margin: 0;
+    padding: 0;
+    align-items: center;
+}
+
+.nav-links li a {
+    font-weight: 500;
+    color: var(--dark);
+}
+
+.nav-links li a:hover,
+.nav-links li a.active {
+    color: var(--primary);
+}
+
+/* Hamburger Menu (Mobile) */
+.burger {
+    display: none;
+    cursor: pointer;
+}
+
+.burger div {
+    width: 25px;
+    height: 3px;
+    background-color: var(--dark);
+    margin: 5px;
+    transition: all 0.3s ease;
+}
+
+/* --- Buttons --- */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: inline-block;
+    text-align: center;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-primary[disabled] {
+    background: #ccc;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* --- Styled Inputs & Dropdowns --- */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+select,
+textarea {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 1rem;
+    font-family: inherit;
+    background-color: var(--white);
+    color: var(--dark);
+    transition: border-color 0.3s, box-shadow 0.3s;
+    appearance: none;
+    /* Remove default browser styling */
+}
+
+/* Custom Arrow for Select */
+select {
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%234CAF50%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 0.75rem auto;
+    padding-right: 2.5rem;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+}
+
+/* --- Auth Pages --- */
+.auth-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #A5D6A7 0%, #EFEBE9 100%);
+    padding: 1rem;
+}
+
+.auth-container {
+    background: var(--white);
+    padding: 2.5rem;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--secondary);
+    font-size: 0.9rem;
+}
+
+/* --- Product Grid --- */
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.product-card {
+    background: var(--white);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+}
+
+.product-card:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--primary);
+}
+
+.product-img {
+    width: 100%;
+    height: 220px;
+    background-color: #f0f0f0;
+    object-fit: cover;
+}
+
+.product-info {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.product-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--dark);
+}
+
+.product-price {
+    font-size: 1.25rem;
+    color: var(--primary-dark);
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+}
+
+.farmer-info {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+/* --- Trust Badges with Icons --- */
+/* --- Trust Badges with Icons --- */
+.badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 0.4rem;
+    letter-spacing: 0.3px;
+    border: 1px solid transparent;
+}
+
+.badge::before {
+    font-size: 0.75rem;
+}
+
+.badge-new {
+    background-color: rgba(33, 150, 243, 0.1);
+    /* 10% Blue */
+    color: var(--accent-blue);
+    border-color: rgba(33, 150, 243, 0.2);
+}
+
+.badge-new::before {
+    content: "🌱";
+}
+
+.badge-trusted {
+    background-color: rgba(76, 175, 80, 0.1);
+    /* 10% Green */
+    color: var(--primary);
+    border-color: rgba(76, 175, 80, 0.2);
+}
+
+.badge-trusted::before {
+    content: "🛡️";
+}
+
+.badge-growing {
+    background-color: rgba(255, 152, 0, 0.1);
+    /* 10% Orange */
+    color: var(--accent-orange);
+    border-color: rgba(255, 152, 0, 0.2);
+}
+
+.badge-growing::before {
+    content: "📈";
+}
+
+.badge-low {
+    background-color: rgba(244, 67, 54, 0.1);
+    /* 10% Red */
+    color: var(--accent-red);
+    border-color: rgba(244, 67, 54, 0.2);
+}
+
+.badge-low::before {
+    content: "⚠️";
+}
+
+.rating-stars {
+    color: var(--accent-yellow);
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Components --- */
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-PENDING {
+    background-color: #FFF3E0;
+    color: #EF6C00;
+}
+
+.status-CONFIRMED,
+.status-FARMER_APPROVED {
+    background-color: #E3F2FD;
+    color: #1565C0;
+}
+
+.status-SHIPPED {
+    background-color: #E8F5E9;
+    color: #2E7D32;
+}
+
+.status-DELIVERED {
+    background-color: #E0F2F1;
+    color: #00695C;
+}
+
+.status-CANCELLED {
+    background-color: #FFEBEE;
+    color: #C62828;
+}
+
+/* Switch Toggle */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 24px;
+    margin-right: 10px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked+.slider {
+    background-color: var(--primary);
+}
+
+input:checked+.slider:before {
+    transform: translateX(22px);
+}
+
+/* --- Media Queries (Responsiveness) --- */
+@media screen and (max-width: 768px) {
+    body {
+        padding-bottom: 40px;
+    }
+
+    .navbar {
+        padding: 1rem;
+    }
+
+    .brand {
+        font-size: 1.2rem;
+    }
+
+    /* Mobile Nav */
+    .nav-links {
+        position: absolute;
+        right: 0px;
+        height: 92vh;
+        top: 8vh;
+        background-color: var(--white);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 70%;
+        transform: translateX(100%);
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        /* Bouncy effect */
+        box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
+        padding-top: 3rem;
+        z-index: 999;
+    }
+
+    .nav-links li {
+        opacity: 0;
+        margin: 1rem 0;
+    }
+
+    .burger {
+        display: block;
+    }
+
+    .nav-active {
+        transform: translateX(0%);
+    }
+
+    /* Animate Links */
+    @keyframes navLinkFade {
+        from {
+            opacity: 0;
+            transform: translateX(50px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0px);
+        }
+    }
+
+    /* Typography Scaling */
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    h2 {
+        font-size: 1.35rem;
+    }
+
+    /* Layout Stacking */
+    .container>div[style*="flex"] {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    #searchInput,
+    #categoryFilter,
+    .btn-primary {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
+    .product-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .auth-container {
+        padding: 1.5rem;
+        border-radius: 12px;
+    }
+}
+
+/* Toggle Animation Classes for Burger */
+.toggle .line1 {
+    transform: rotate(-45deg) translate(-5px, 6px);
+}
+
+.toggle .line2 {
+    opacity: 0;
+}
+
+.toggle .line3 {
+    transform: rotate(45deg) translate(-5px, -6px);
+}

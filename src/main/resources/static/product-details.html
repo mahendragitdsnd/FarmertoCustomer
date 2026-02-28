@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details - Farm Direct</title>
+    <link rel="stylesheet" href="css/style.css?v=2">
+    <link rel="icon" type="image/png" href="images/brand.png?v=5">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="navbar-container"></div>
+
+    <div class="container" style="margin-top: 2rem;">
+        <div id="product-details"
+            style="display: flex; gap: 2rem; flex-wrap: wrap; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+            <div style="flex: 1; min-width: 300px;">
+                <img id="p-image" src="" alt="Product"
+                    style="width: 100%; height: auto; border-radius: 8px; object-fit: cover; max-height: 400px;">
+            </div>
+            <div style="flex: 1; min-width: 300px; display: flex; flex-direction: column;">
+                <h2 id="p-name" style="margin-bottom: 0.5rem; font-size: 2rem;">Loading...</h2>
+                <div id="p-category"
+                    style="font-size: 0.9rem; color: #666; background: #f8f9fa; padding: 0.25rem 0.5rem; border-radius: 4px; align-self: start; margin-bottom: 1rem;">
+                    Category</div>
+
+                <div id="p-price"
+                    style="font-size: 1.5rem; font-weight: 600; color: var(--primary-color); margin-bottom: 1rem;">
+                    ₹0 / Unit
+                </div>
+
+                <div style="font-size: 1rem; color: #555; margin-bottom: 2rem; line-height: 1.6;">
+                    <strong style="display: block; margin-bottom: 0.5rem; color: #333;">Description:</strong>
+                    <span id="p-desc">No description available.</span>
+                </div>
+
+                <div style="padding: 1rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 2rem;">
+                    <div style="font-size: 0.9rem; color: #888; margin-bottom: 0.5rem;">Sold By</div>
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <div id="p-farmer" style="font-weight: 600; font-size: 1.1rem;">Farmer Name</div>
+                            <div id="p-badge" style="margin-top: 0.25rem;"></div>
+                        </div>
+                        <div id="p-rating"></div>
+                    </div>
+                </div>
+
+                <div id="action-container">
+                    <!-- Add to Cart Button -->
+                </div>
+            </div>
+        </div>
+
+        <div
+            style="margin-top: 3rem; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+            <h3>Reviews & Ratings</h3>
+            <div id="reviews-list" style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                <p>Loading reviews...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/nav.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get('id');
+        let currentProduct = null;
+        let cartItems = {};
+
+        async function init() {
+            if (!productId) {
+                alert('Product not found');
+                window.location.href = 'index.html';
+                return;
+            }
+            await fetchCart();
+            await loadProductDetails();
+            await loadReviews();
+        }
+
+        async function fetchCart() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user || user.role === 'FARMER') return;
+            try {
+                const res = await fetch(`/api/cart/${user.id}`);
+                const data = await res.json();
+                cartItems = {};
+                data.forEach(item => cartItems[item.product.id] = item);
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadProductDetails() {
+            try {
+                const res = await fetch(`/api/products/${productId}`);
+                if (!res.ok) throw new Error('Product not found');
+                const p = await res.json();
+                currentProduct = p;
+
+                document.title = `${p.name} - Farm Direct`;
+                document.getElementById('p-image').src = p.imageUrl || 'https://placehold.co/400x300?text=No+Image';
+                document.getElementById('p-name').innerText = p.name;
+                document.getElementById('p-category').innerText = p.category;
+                document.getElementById('p-price').innerText = `₹${p.price} / ${p.category === 'Vegetables' || p.category === 'Fruits' ? 'Kg' : 'Unit'}`; // Approx unit logic
+                document.getElementById('p-desc').innerText = p.description || 'No description provided.';
+
+                // Farmer Info
+                if (p.farmer) {
+                    document.getElementById('p-farmer').innerText = p.farmer.name;
+                    document.getElementById('p-badge').innerHTML = renderBadge(p.farmer);
+                    document.getElementById('p-rating').innerHTML = renderFarmerStars(p.farmer);
+                }
+
+                renderActionButton();
+
+            } catch (e) {
+                document.querySelector('.container').innerHTML = '<h2>Product not found</h2>';
+            }
+        }
+
+        async function loadReviews() {
+            try {
+                const res = await fetch(`/api/reviews/product/${productId}`);
+                const reviews = await res.json();
+                const container = document.getElementById('reviews-list');
+
+                if (reviews.length === 0) {
+                    container.innerHTML = '<p style="color: #888; font-style: italic;">No reviews yet for this product.</p>';
+                    return;
+                }
+
+                container.innerHTML = reviews.map(r => `
+                    <div style="border-bottom: 1px solid #eee; padding-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <div style="font-weight: 600;">${r.customer.name}</div>
+                            <div style="color: #fd7e14; font-weight: bold;">
+                                ${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}
+                            </div>
+                        </div>
+                        <div style="color: #555; line-height: 1.5;">${r.comment || ''}</div>
+                        <div style="font-size: 0.8rem; color: #999; margin-top: 0.5rem;">
+                            ${new Date(r.createdAt).toLocaleDateString()}
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (e) { console.error(e); }
+        }
+
+        function renderActionButton() {
+            const container = document.getElementById('action-container');
+            const user = JSON.parse(localStorage.getItem('user'));
+            const p = currentProduct;
+
+            if (!user) {
+                container.innerHTML = `<button onclick="window.location.href='login.html'" class="btn-primary" style="width: 100%;">Login to Buy</button>`;
+                return;
+            }
+            if (user.role === 'FARMER') {
+                container.innerHTML = `<button disabled class="btn-primary" style="background:#ccc; cursor:not-allowed; width: 100%;">Farmers cannot buy</button>`;
+                return;
+            }
+            if (p.status === 'PAUSED' || p.quantity <= 0) {
+                container.innerHTML = `<button disabled class="btn-primary" style="background:#ccc; cursor:not-allowed; width: 100%;">${p.quantity <= 0 ? 'Out of Stock' : 'Unavailable'}</button>`;
+                return;
+            }
+
+            const item = cartItems[p.id];
+            if (item) {
+                container.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <button onclick="updateQty(${item.id}, ${p.id}, ${item.quantity - 1})" class="btn-primary" style="width: 40px;">-</button>
+                        <span style="font-size: 1.2rem; font-weight: 600;">${item.quantity}</span>
+                        <button onclick="updateQty(${item.id}, ${p.id}, ${item.quantity + 1})" class="btn-primary" style="width: 40px;">+</button>
+                        <span style="margin-left: auto; color: green;">In your cart</span>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `<button onclick="addToCart(${p.id})" class="btn-primary" style="width: 100%;">Add to Cart</button>`;
+            }
+        }
+
+        async function addToCart(pid) {
+            const user = JSON.parse(localStorage.getItem('user'));
+            try {
+                const res = await fetch('/api/cart/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ customerId: user.id, productId: pid, quantity: 1 })
+                });
+                if (res.ok) { await fetchCart(); renderActionButton(); }
+            } catch (e) { console.error(e); }
+        }
+
+        async function updateQty(cid, pid, newQty) {
+            if (newQty <= 0) {
+                await fetch(`/api/cart/remove/${cid}`, { method: 'DELETE' });
+                delete cartItems[pid];
+            } else {
+                await fetch('/api/cart/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cartItemId: cid, quantity: newQty })
+                });
+                await fetchCart();
+            }
+            renderActionButton();
+        }
+
+        // --- Shared Helper Functions (Same as index.html essentially) ---
+        function renderBadge(farmer) {
+            const badge = farmer.badge;
+            if (!badge) return '';
+            let badgeClass = 'badge-new';
+            let badgeText = 'New Farmer';
+            if (badge === 'TRUSTED') { badgeClass = 'badge-trusted'; badgeText = 'Trusted'; }
+            else if (badge === 'GROWING') { badgeClass = 'badge-growing'; badgeText = 'Growing'; }
+            else if (badge === 'LOW_RATED') { badgeClass = 'badge-low'; badgeText = 'Low Rated'; }
+            return `<span class="badge ${badgeClass}">${badgeText}</span>`;
+        }
+
+        function renderFarmerStars(farmer) {
+            if (farmer.ratingCount === 0) return `<div style="font-size: 0.8rem; color: #888;">No reviews yet</div>`;
+            return `
+                <div style="font-size: 0.9rem; display: flex; align-items: center;">
+                    <span class="rating-stars">★</span> 
+                    <span style="font-weight: 600; margin-left: 4px;">${farmer.averageRating}</span>
+                    <span style="color: #666; margin-left: 4px;">(${farmer.ratingCount} reviews)</span>
+                </div>
+            `;
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

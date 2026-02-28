@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Farm Direct</title>
+    <link rel="icon" type="image/png" href="images/brand.png?v=3">
+    <link rel="stylesheet" href="css/style.css?v=2">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="navbar-container"></div>
+
+    <div class="container" style="max-width: 600px;">
+        <h2>Checkout</h2>
+
+        <div
+            style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-top: 1rem;">
+            <h3>Select Delivery Address</h3>
+            <div id="address-list">
+                <p>Loading addresses...</p>
+            </div>
+
+            <button onclick="document.getElementById('addAddressForm').style.display='block'"
+                style="margin-top: 1rem; background: none; border: 1px dashed var(--primary-color); color: var(--primary-color); padding: 0.5rem; width: 100%;">+
+                Add New Address</button>
+
+            <div id="addAddressForm"
+                style="display: none; margin-top: 1rem; background: #f8f9fa; padding: 1rem; border-radius: 4px;">
+                <input type="text" id="addr_state" placeholder="State"
+                    style="width: 100%; margin-bottom: 0.5rem; padding: 0.5rem;">
+                <input type="text" id="addr_district" placeholder="District"
+                    style="width: 100%; margin-bottom: 0.5rem; padding: 0.5rem;">
+                <input type="text" id="addr_area" placeholder="Area / Street"
+                    style="width: 100%; margin-bottom: 0.5rem; padding: 0.5rem;">
+                <input type="text" id="addr_pin" placeholder="Pincode"
+                    style="width: 100%; margin-bottom: 0.5rem; padding: 0.5rem;">
+                <button onclick="saveAddress()" class="btn-primary" style="width: auto;">Save Address</button>
+            </div>
+
+            <hr style="margin: 2rem 0; border: none; border-top: 1px solid #eee;">
+
+            <h3>Contact Number</h3>
+            <div style="margin-top: 1rem; margin-bottom: 2rem;">
+                <input type="tel" id="contactNumber" placeholder="Mobile Number"
+                    style="width: 100%; padding: 1rem; border: 1px solid #eee; border-radius: 6px; font-size: 1rem;">
+                <div style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">The farmer will use this to contact
+                    you if needed.</div>
+            </div>
+
+            <hr style="margin: 2rem 0; border: none; border-top: 1px solid #eee;">
+
+            <h3>Payment Method</h3>
+            <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;" id="payment-options">
+                <label
+                    style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid #eee; border-radius: 6px; cursor: pointer;">
+                    <input type="radio" name="payment" value="UPI" checked>
+                    <span><strong>UPI</strong> (Google Pay, PhonePe)</span>
+                </label>
+                <label
+                    style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid #eee; border-radius: 6px; cursor: pointer;">
+                    <input type="radio" name="payment" value="CARD">
+                    <span><strong>Credit / Debit Card</strong> (Visa, MasterCard)</span>
+                </label>
+                <label
+                    style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid #eee; border-radius: 6px; cursor: pointer;">
+                    <input type="radio" name="payment" value="COD">
+                    <span><strong>Cash on Delivery</strong></span>
+                </label>
+            </div>
+
+            <button onclick="processPayment()" id="payBtn" class="btn-primary"
+                style="margin-top: 1.5rem; width: 100%;">Pay & Place Order</button>
+            <div id="paymentStatus"
+                style="margin-top: 1rem; text-align: center; color: green; font-weight: 600; min-height: 24px;"></div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/nav.js"></script>
+    <script>
+        let selectedAddressId = null;
+
+        async function loadAddresses() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) { window.location.href = 'login.html'; return; }
+
+            try {
+                const res = await fetch(`/api/addresses/customer/${user.id}`);
+                const addresses = await res.json();
+
+                const container = document.getElementById('address-list');
+                if (addresses.length === 0) {
+                    container.innerHTML = '<p>No addresses found.</p>';
+                } else {
+                    container.innerHTML = addresses.map((addr, index) => `
+                        <div onclick="selectAddress(${addr.id})" id="addr-${addr.id}" class="address-card" style="padding: 1rem; border: 2px solid ${index === 0 ? 'var(--primary)' : '#eee'}; border-radius: 6px; margin-bottom: 0.5rem; cursor: pointer;">
+                            <div>${addr.area}, ${addr.district}, ${addr.state} - ${addr.pincode}</div>
+                        </div>
+                    `).join('');
+                    if (addresses.length > 0) selectAddress(addresses[0].id);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function selectAddress(id) {
+            selectedAddressId = id;
+            document.querySelectorAll('.address-card').forEach(el => el.style.borderColor = '#eee');
+            const el = document.getElementById(`addr-${id}`);
+            if (el) el.style.borderColor = 'var(--primary)';
+        }
+
+        async function saveAddress() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            const address = {
+                state: document.getElementById('addr_state').value,
+                district: document.getElementById('addr_district').value,
+                area: document.getElementById('addr_area').value,
+                pincode: document.getElementById('addr_pin').value
+            };
+            if (!address.area || !address.pincode) { alert("Please fill address details"); return; }
+
+            try {
+                const res = await fetch(`/api/addresses/add?customerId=${user.id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(address)
+                });
+
+                if (res.ok) {
+                    document.getElementById('addAddressForm').style.display = 'none';
+                    loadAddresses();
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function processPayment() {
+            if (!selectedAddressId) {
+                alert('Please select a delivery address');
+                return;
+            }
+
+            const contactNumber = document.getElementById('contactNumber').value;
+            if (!contactNumber || contactNumber.trim() === '') {
+                alert('Please enter your contact number');
+                return;
+            }
+
+            const paymentOptionProp = document.querySelector('input[name="payment"]:checked');
+            if (!paymentOptionProp) { alert('Select payment method'); return; }
+            const paymentMethod = paymentOptionProp.value;
+
+            const btn = document.getElementById('payBtn');
+            const statusDiv = document.getElementById('paymentStatus');
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = 'Processing Payment...';
+            }
+            if (statusDiv) statusDiv.innerText = '';
+
+            // 1. Simulate Payment Delay
+            setTimeout(async () => {
+                if (statusDiv) {
+                    if (paymentMethod !== 'COD') {
+                        statusDiv.innerText = `Payment via ${paymentMethod} Successful!`;
+                    } else {
+                        statusDiv.innerText = 'COD Confirmed.';
+                    }
+                }
+
+                const user = JSON.parse(localStorage.getItem('user'));
+                const contactNumber = document.getElementById('contactNumber').value;
+
+                // Place Order
+                await placeOrder(user.id, selectedAddressId, paymentMethod, contactNumber);
+
+            }, 1000);
+        }
+
+        async function placeOrder(customerId, addressId, paymentMethod, contactNumber) {
+            const btn = document.getElementById('payBtn');
+            try {
+                const res = await fetch('/api/orders/place', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        customerId: customerId,
+                        addressId: addressId,
+                        paymentMethod: paymentMethod,
+                        contactNumber: contactNumber,
+                        paymentAmount: 0.0 // Backend will calc real amount
+                    })
+                });
+
+                if (res.ok) {
+                    alert('Order Placed Successfully!');
+                    window.location.href = 'customer-dashboard.html';
+                } else {
+                    const txt = await res.text();
+                    alert('Failed to place order: ' + txt);
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerText = 'Pay & Place Order';
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+                alert('An error occurred while placing the order.');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = 'Pay & Place Order';
+                }
+            }
+        }
+
+        loadAddresses();
+    </script>
+</body>
+
+</html>

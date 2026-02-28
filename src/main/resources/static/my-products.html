@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Products - Farm Direct</title>
+    <link rel="stylesheet" href="css/style.css?v=2">
+    <link rel="icon" type="image/png" href="images/brand.png?v=5">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="navbar-container"></div>
+
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h2>My Products</h2>
+            <button onclick="document.getElementById('addProductForm').style.display='block'" class="btn-primary"
+                style="width: auto; padding: 0.75rem 1.5rem;">+ Add Product</button>
+        </div>
+
+        <!-- Add Product Form -->
+        <div id="addProductForm"
+            style="display: none; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+            <!-- ... Add Product Form Content ... -->
+            <h3>Add New Product</h3>
+            <form onsubmit="addProduct(event)">
+                <!-- ... existing form inputs ... -->
+                <div class="form-group">
+                    <label>Product Name</label>
+                    <input type="text" id="p_name" required placeholder="e.g., Fresh Tomatoes">
+                </div>
+                <div class="form-group">
+                    <label>Description (Optional)</label>
+                    <textarea id="p_desc" placeholder="Details about product..." rows="3"
+                        style="width: 100%; padding: 0.75rem; border:1px solid #ddd;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="p_category" required>
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="p_price">Price (₹)</label>
+                    <input type="number" id="p_price" required step="1" min="1" placeholder="Amount in ₹">
+                </div>
+                <div class="form-group">
+                    <label for="p_qty">Quantity / Stock</label>
+                    <input type="number" id="p_qty" required min="1">
+                </div>
+                <div class="form-group">
+                    <label>Product Image</label>
+                    <input type="file" id="p_img_file" accept="image/*" required>
+                    <small>Upload a clear image of your produce.</small>
+                </div>
+                <button type="submit" class="btn-primary" style="width: auto;">Save Product</button>
+                <button type="button" onclick="document.getElementById('addProductForm').style.display='none'"
+                    style="margin-left: 1rem; padding: 0.75rem;">Cancel</button>
+            </form>
+        </div>
+
+        <!-- Edit Product Modal -->
+        <div id="editProductModal"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+            <div style="background: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 500px;">
+                <h3>Edit Product</h3>
+                <form onsubmit="updateProduct(event)">
+                    <input type="hidden" id="edit_p_id">
+                    <div class="form-group">
+                        <label>Product Name</label>
+                        <input type="text" id="edit_p_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="edit_p_desc" rows="3"
+                            style="width: 100%; padding: 0.75rem; border:1px solid #ddd;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="edit_p_category" required>
+                            <!-- Options populated by JS -->
+                            <option value="Vegetables">Vegetables</option>
+                            <option value="Fruits">Fruits</option>
+                            <option value="Dairy">Dairy</option>
+                            <option value="Grains">Grains</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_p_price">Price (₹)</label>
+                        <input type="number" id="edit_p_price" required step="1" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_p_qty">Quantity</label>
+                        <input type="number" id="edit_p_qty" required min="0">
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+                        <button type="button" onclick="closeEditModal()" style="padding: 0.5rem 1rem;">Cancel</button>
+                        <button type="submit" class="btn-primary" style="width: auto;">Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="products-list" class="product-grid">
+            <!-- Products Loaded Here -->
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/nav.js"></script>
+    <script>
+        let categoryMap = {}; // name -> unit
+
+        async function loadCategories() {
+            try {
+                const res = await fetch('/api/categories');
+                const categories = await res.json();
+
+                const select = document.getElementById('p_category');
+                select.innerHTML = categories.map(c => {
+                    categoryMap[c.name] = c.unit; // Store unit
+                    return `<option value="${c.name}">${c.name}</option>`;
+                }).join('');
+
+                // Trigger change to set default unit
+                if (categories.length > 0) updateUnitLabels();
+            } catch (e) { console.error(e); }
+        }
+
+        // Listen for category changes
+        document.getElementById('p_category').addEventListener('change', updateUnitLabels);
+
+        function updateUnitLabels() {
+            const catName = document.getElementById('p_category').value;
+            const unit = categoryMap[catName] || '';
+
+            // Update Add Form Labels
+            document.querySelector('label[for="p_price"]').innerText = `Price (₹ / ${unit})`;
+            document.querySelector('label[for="p_qty"]').innerText = `Quantity / Stock (${unit})`;
+        }
+
+        // Listen for EDIT category changes
+        document.getElementById('edit_p_category').addEventListener('change', updateEditUnitLabels);
+
+        function updateEditUnitLabels() {
+            const catName = document.getElementById('edit_p_category').value;
+            const unit = categoryMap[catName] || '';
+
+            // Update Edit Modal Labels
+            document.querySelector('label[for="edit_p_price"]').innerText = `Price (₹ / ${unit})`;
+            document.querySelector('label[for="edit_p_qty"]').innerText = `Quantity (${unit})`;
+        }
+
+        async function loadMyProducts() {
+            // ... (rest of the function)
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user || user.role !== 'FARMER') { window.location.href = 'login.html'; return; }
+
+            try {
+                const res = await fetch(`/api/products/farmer/${user.id}`);
+                const products = await res.json();
+
+                const container = document.getElementById('products-list');
+
+                if (products.length === 0) {
+                    container.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: white; border-radius: 8px; color: #666;">
+                            <h3>No products added yet</h3>
+                            <p>Click "+ Add Product" to start selling your produce.</p>
+                        </div>
+                     `;
+                    return;
+                }
+
+                container.innerHTML = products.map(p => {
+                    const lowStock = p.quantity < 10 && p.quantity > 0 ? '<span style="color:orange; font-weight:bold; font-size:0.8rem;">Low Stock</span>' : '';
+                    const outStock = p.quantity <= 0 ? '<span style="color:red; font-weight:bold; font-size:0.8rem;">Out of Stock</span>' : '';
+                    const unit = categoryMap[p.category] || '';
+
+                    return `
+                     <div class="product-card">
+                        <img src="${p.imageUrl || ''}" class="product-img" onerror="this.src='https://placehold.co/400x300?text=No+Image'">
+                        <div class="product-info">
+                            <div class="product-title">${p.name}</div>
+                            <div style="font-size:0.85rem; color:#666; margin-bottom:0.5rem; height: 40px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                ${p.description || 'No description provided.'}
+                            </div>
+                            <div class="product-price">₹${p.price} / ${unit}</div>
+                            <div style="margin: 0.5rem 0; font-size: 0.9rem;">
+                                Qty: <b>${p.quantity} ${unit}</b> ${lowStock} ${outStock}
+                            </div>
+                            
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem;">
+                                <div style="display: flex; align-items: center;" title="Toggle Availability / Stock Status">
+                                    <label class="switch">
+                                        <input type="checkbox" ${p.status === 'ACTIVE' ? 'checked' : ''} onchange="toggleStatus(${p.id})">
+                                        <span class="slider round"></span>
+                                    </label>
+                                    <span style="font-size: 0.8rem; color: #666;">${p.status === 'ACTIVE' ? 'Active' : 'Paused'}</span>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button onclick='openEditModal(${JSON.stringify(p).replace(/'/g, "&#39;")})' style="background: none; border: 1px solid #ddd; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">Edit</button>
+                                    <button onclick="deleteProduct(${p.id})" style="color: red; background: none; border: none; padding: 0; cursor: pointer;">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `}).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function addProduct(e) {
+            e.preventDefault();
+            const user = JSON.parse(localStorage.getItem('user'));
+            const fileInput = document.getElementById('p_img_file');
+            let imageUrl = '';
+
+            if (fileInput.files.length > 0) {
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                try {
+                    const r = await fetch('/api/images/upload', { method: 'POST', body: formData });
+                    if (r.ok) imageUrl = (await r.json()).imageUrl;
+                } catch (err) { console.error(err); }
+            }
+
+            const p = {
+                name: document.getElementById('p_name').value,
+                description: document.getElementById('p_desc').value,
+                category: document.getElementById('p_category').value,
+                price: parseFloat(document.getElementById('p_price').value),
+                quantity: parseInt(document.getElementById('p_qty').value),
+                imageUrl: imageUrl
+            };
+
+            const res = await fetch(`/api/products/add?farmerId=${user.id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(p)
+            });
+            if (res.ok) {
+                document.getElementById('addProductForm').style.display = 'none';
+                e.target.reset(); // Reset the form
+                loadMyProducts();
+            } else {
+                alert('Failed to add product');
+            }
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm('Delete this product?')) return;
+            const user = JSON.parse(localStorage.getItem('user'));
+            try {
+                const res = await fetch(`/api/products/delete/${id}?farmerId=${user.id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadMyProducts();
+                } else {
+                    alert('Failed to delete product');
+                }
+            } catch (e) { console.error(e); alert('Error deleting product'); }
+        }
+
+        async function toggleStatus(id) {
+            const user = JSON.parse(localStorage.getItem('user'));
+            try {
+                const res = await fetch(`/api/products/status/${id}?farmerId=${user.id}`, { method: 'POST' });
+                if (res.ok) {
+                    loadMyProducts();
+                } else {
+                    alert('Failed to change product status');
+                }
+            } catch (e) { console.error(e); alert('Error changing product status'); }
+        }
+
+        function openEditModal(p) {
+            // Populate category options for edit modal if empty
+            const editSelect = document.getElementById('edit_p_category');
+            if (editSelect.options.length <= 4) { // Basic check if not populated
+                const mainSelect = document.getElementById('p_category');
+                editSelect.innerHTML = mainSelect.innerHTML;
+            }
+
+            document.getElementById('edit_p_id').value = p.id;
+            document.getElementById('edit_p_name').value = p.name;
+            document.getElementById('edit_p_desc').value = p.description || '';
+            document.getElementById('edit_p_category').value = p.category;
+            document.getElementById('edit_p_price').value = p.price;
+            document.getElementById('edit_p_qty').value = p.quantity;
+
+            // Trigger unit update for edit modal
+            updateEditUnitLabels();
+
+            document.getElementById('editProductModal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editProductModal').style.display = 'none';
+        }
+
+        async function updateProduct(e) {
+            e.preventDefault();
+            const user = JSON.parse(localStorage.getItem('user'));
+            const id = document.getElementById('edit_p_id').value;
+            const p = {
+                name: document.getElementById('edit_p_name').value,
+                description: document.getElementById('edit_p_desc').value,
+                category: document.getElementById('edit_p_category').value,
+                price: parseFloat(document.getElementById('edit_p_price').value),
+                quantity: parseInt(document.getElementById('edit_p_qty').value),
+                // imageUrl is not updated via this modal, so we don't send it.
+                // Backend should handle not overwriting imageUrl if not provided.
+            };
+
+            try {
+                const res = await fetch(`/api/products/update/${id}?farmerId=${user.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(p)
+                });
+                if (res.ok) {
+                    closeEditModal();
+                    loadMyProducts();
+                } else {
+                    alert('Failed to update product');
+                }
+            } catch (e) { console.error(e); alert('Error updating product'); }
+        }
+
+        loadCategories();
+        loadMyProducts();
+    </script>
+</body>
+
+</html>

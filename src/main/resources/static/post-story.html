@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Post Story | Farmer Community</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="images/brand.png">
+
+    <style>
+        .story-form-container {
+            max-width: 600px;
+            margin: 2.5rem auto;
+            background: #ffffff;
+            padding: 2rem;
+            border-radius: 14px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+
+        .story-form-container h2 {
+            margin-bottom: 1rem;
+            color: #2e7d32;
+        }
+
+        .story-form-container label {
+            font-weight: 600;
+            margin-top: 1rem;
+            display: block;
+        }
+
+        .story-form-container input,
+        .story-form-container textarea {
+            width: 100%;
+            padding: 0.6rem;
+            margin-top: 0.4rem;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-family: inherit;
+        }
+
+        .story-form-container textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .story-form-container button {
+            margin-top: 1.5rem;
+            width: 100%;
+            background: #2e7d32;
+            color: white;
+            border: none;
+            padding: 0.7rem;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .story-form-container button:hover {
+            background: #256628;
+        }
+
+        .note {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="navbar-container"></div>
+
+<div class="story-form-container">
+    <h2>🌾 Post Your Farm Story</h2>
+
+    <form id="storyForm">
+        <label>Story Title</label>
+        <input type="text" id="title" placeholder="Fresh harvest from my farm" required>
+
+        <label>Story Description</label>
+        <textarea id="description"
+                  placeholder="Tell customers about your farm, crop quality, harvest process..."
+                  required></textarea>
+
+        <label>Image URL</label>
+        <input type="text" id="imageUrl"
+               placeholder="/uploads/chilli.jpg or image link">
+
+        <div class="note">
+            * Image upload can be integrated later. For now, paste image URL.
+        </div>
+
+        <button type="submit">Post Story</button>
+    </form>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/nav.js"></script>
+
+<script>
+    const userJson = localStorage.getItem('user');
+
+    if (!userJson) {
+        alert("Please login as farmer");
+        window.location.href = "login.html";
+    }
+
+    const user = JSON.parse(userJson);
+
+    if (user.role !== 'FARMER') {
+        alert("Only farmers can post stories");
+        window.location.href = "index.html";
+    }
+
+    document.getElementById('storyForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const data = {
+            farmer: { id: user.id },
+            title: document.getElementById('title').value,
+            description: document.getElementById('description').value,
+            imageUrl: document.getElementById('imageUrl').value
+        };
+
+        try {
+            const res = await fetch('/api/community/post', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                alert("Story posted successfully!");
+                window.location.href = "community.html";
+            } else {
+                alert("Failed to post story");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error posting story");
+        }
+    });
+</script>
+
+</body>
+</html>

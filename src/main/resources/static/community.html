@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Farmer Community | Farm Direct</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="images/brand.png">
+
+    <style>
+        .community-container {
+            max-width: 800px;
+            margin: 2rem auto;
+        }
+
+        .story-card {
+            background: #f6fff1;
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        .story-img {
+            width: 100%;
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            object-fit: cover;
+        }
+
+        .story-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .story-desc {
+            font-size: 0.9rem;
+            color: #444;
+            margin-bottom: 0.5rem;
+        }
+
+        .story-farmer {
+            font-size: 0.85rem;
+            color: #2e7d32;
+            font-weight: 600;
+        }
+
+        .story-actions {
+            margin-top: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+
+        .like-btn {
+            border: none;
+            background: #2e7d32;
+            color: white;
+            padding: 0.4rem 0.9rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .edit-btn {
+            background: #ffc107;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="navbar-container"></div>
+
+<div class="community-container">
+    <h2>🌾 Farmer Community</h2>
+    <p style="color:#666; margin-bottom:1.5rem;">
+        Stories shared by farmers about their products and farms
+    </p>
+
+    <div id="community-feed">
+        <p>Loading stories...</p>
+    </div>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/nav.js"></script>
+
+<script>
+    const user = JSON.parse(localStorage.getItem("user"));
+
+    async function loadCommunity() {
+        try {
+            const res = await fetch('/api/community');
+            const posts = await res.json();
+
+            const feed = document.getElementById('community-feed');
+
+            if (posts.length === 0) {
+                feed.innerHTML = '<p>No stories posted yet.</p>';
+                return;
+            }
+
+            feed.innerHTML = posts.map(p => `
+                <div class="story-card">
+
+                    <img src="${p.imageUrl || 'https://placehold.co/600x400?text=Story'}"
+                         class="story-img"
+                         alt="Story Image">
+
+                    <div class="story-title">${p.title}</div>
+
+                    <div class="story-desc">
+                        ${p.description || 'No description provided'}
+                    </div>
+
+                    <div class="story-farmer">
+                        👨‍🌾 ${p.farmer ? p.farmer.name : 'Unknown Farmer'}
+                    </div>
+
+                    <div class="story-actions">
+                        <button class="like-btn"
+                                onclick="likeStory(${p.id})">
+                            ❤️ ${p.likeCount}
+                        </button>
+
+                        ${
+                            user &&
+                            user.role === 'FARMER' &&
+                            p.farmer &&
+                            user.id === p.farmer.id
+                                ? `
+                            <button class="edit-btn"
+                                    onclick="editStory(${p.id})">
+                                ✏️ Edit
+                            </button>
+
+                            <button class="delete-btn"
+                                    onclick="deleteStory(${p.id})">
+                                🗑 Delete
+                            </button>
+                        `
+                                : ''
+                        }
+                    </div>
+                </div>
+            `).join('');
+
+        } catch (e) {
+            console.error(e);
+            document.getElementById('community-feed').innerHTML =
+                '<p>Error loading community stories.</p>';
+        }
+    }
+
+    async function likeStory(postId) {
+        if (!user) {
+            alert('Please login to like stories');
+            return;
+        }
+
+        await fetch(`/api/community/like/${postId}?userId=${user.id}`, {
+            method: 'POST'
+        });
+
+        loadCommunity();
+    }
+
+    async function deleteStory(postId) {
+        if (!confirm("Delete this story?")) return;
+
+        await fetch(`/api/community/post/${postId}`, {
+            method: 'DELETE'
+        });
+
+        loadCommunity();
+    }
+
+    function editStory(postId) {
+        window.location.href = `post-story.html?edit=${postId}`;
+    }
+
+    loadCommunity();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmer Orders - Farm Direct</title>
+    <link rel="icon" type="image/png" href="images/brand.png?v=5">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css?v=2">
+</head>
+
+<body>
+    <div id="navbar-container"></div>
+
+    <div class="container">
+        <h2>Manage Orders</h2>
+
+        <table
+            style="width: 100%; border-collapse: collapse; background: white; margin-top: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden;">
+            <thead>
+                <tr style="background: #f8f9fa;">
+                    <th style="text-align: left; padding: 1rem;">Order ID</th>
+                    <th style="text-align: left; padding: 1rem;">Customer</th>
+                    <th style="text-align: left; padding: 1rem;">Products</th>
+                    <th style="text-align: left; padding: 1rem;">Delivery Address</th>
+                    <th style="text-align: left; padding: 1rem;">Contact</th>
+                    <th style="text-align: left; padding: 1rem;">Total Amount</th>
+                    <th style="text-align: left; padding: 1rem;">Status</th>
+                    <th style="text-align: left; padding: 1rem;">Rating</th>
+                    <th style="text-align: left; padding: 1rem;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="orders-body">
+                <tr>
+                    <td colspan="5" style="padding: 1rem;">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/nav.js"></script>
+    <script>
+        async function loadOrders() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user || user.role !== 'FARMER') {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/orders/farmer/${user.id}`);
+                const orders = await res.json();
+
+                const tbody = document.getElementById('orders-body');
+                if (orders.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="padding: 1rem;">No orders found.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = orders.map(order => `
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 1rem;">#${order.id}</td>
+                        <td style="padding: 1rem;">${order.customer.name}</td>
+                        <td style="padding: 1rem;">
+                            <div style="font-size: 0.9rem;">
+                                ${order.items && order.items.length > 0 ? order.items.map(item => `
+                                    <div style="margin-bottom: 4px;">
+                                        <strong>${item.product.name}</strong> x${item.quantity}
+                                    </div>
+                                `).join('') : '<span style="color: #ccc;">No items</span>'}
+                            </div>
+                        </td>
+                        <td style="padding: 1rem;">
+                            ${order.address ? `
+                                <div style="font-size: 0.9rem;">
+                                    <div><strong>${order.address.area}</strong></div>
+                                    <div style="font-size: 0.85rem; color: #666;">${order.address.district}, ${order.address.state} - ${order.address.pincode}</div>
+                                </div>
+                            ` : '<span style="color: #ccc;">No address provided</span>'}
+                        </td>
+                        <td style="padding: 1rem;">
+                            ${order.contactNumber || '<span style="color: #ccc;">N/A</span>'}
+                        </td>
+                        <td style="padding: 1rem;">₹${order.totalAmount}</td>
+                        <td style="padding: 1rem;"><span class="status-badge status-${order.status}">${order.status.replace(/_/g, ' ')}</span></td>
+                        <td style="padding: 1rem;">
+                            ${order.review ? `
+                                <div style="color: #fd7e14; font-weight: 600;">
+                                    ${'★'.repeat(order.review.rating)}${'☆'.repeat(5 - order.review.rating)}
+                                </div>
+                                <div style="font-size: 0.75rem; color: #666; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${order.review.comment}">
+                                    ${order.review.comment || ''}
+                                </div>
+                            ` : '<span style="color: #ccc; font-size: 0.8rem;">No rating yet</span>'}
+                        </td>
+                        <td style="padding: 1rem;">
+                            ${renderActionButtons(order)}
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function renderActionButtons(order) {
+            let btns = '';
+
+            if (order.status === 'WAITING_FOR_FARMER_APPROVAL') {
+                btns += `<button onclick="updateStatus(${order.id}, 'FARMER_APPROVED')" style="background: green; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px;">Approve</button>`;
+                btns += `<button onclick="updateStatus(${order.id}, 'REJECTED')" style="background: red; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Reject</button>`;
+            } else if (order.status === 'FARMER_APPROVED') {
+                btns += `<button onclick="updateStatus(${order.id}, 'OUT_FOR_DELIVERY')" style="background: #007bff; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Mark Out for Delivery</button>`;
+            } else if (order.status === 'OUT_FOR_DELIVERY') {
+                btns += `<button onclick="updateStatus(${order.id}, 'DELIVERED')" style="background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Mark Delivered</button>`;
+            } else if (order.status === 'DELIVERED') {
+                btns += `<span style="color: green;">✓ Completed</span>`;
+            } else if (order.status === 'REJECTED') {
+                btns += `<span style="color: red;">✗ Rejected</span>`;
+            } else {
+                btns += `<span>${order.status}</span>`;
+            }
+            return btns;
+        }
+
+        async function updateStatus(orderId, newStatus) {
+            const user = JSON.parse(localStorage.getItem('user'));
+            try {
+                const res = await fetch('/api/orders/update-status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        orderId: orderId,
+                        status: newStatus,
+                        farmerId: user.id
+                    })
+                });
+
+                if (res.ok) {
+                    loadOrders(); // Reload to update UI
+                } else {
+                    const txt = await res.text();
+                    alert('Failed to update: ' + txt);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error updating status');
+            }
+        }
+
+        loadOrders();
+    </script>
+</body>
+
+</html>
